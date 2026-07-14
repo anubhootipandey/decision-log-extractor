@@ -2,84 +2,681 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Decision Log Extractor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Decision Log Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  body {
-    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
-    max-width: 800px;
-    margin: 40px auto;
-    padding: 0 20px;
-    background: #fafafa;
-    color: #1a1a1a;
+  :root {
+    --bg: #f7f7f4;
+    --surface: #ffffff;
+    --surface-alt: #f0f0ec;
+    --ink: #15161b;
+    --ink-soft: #5c5f6b;
+    --ink-faint: #8b8e98;
+    --border: #e2e2dc;
+    --border-strong: #cfcfc7;
+    --accent: #2d3561;
+    --accent-ink: #ffffff;
+    --accent-soft: #e9eaf2;
+    --positive: #3f7a5d;
+    --positive-soft: #e6f0ea;
+
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow-card: 0 1px 2px rgba(21, 22, 27, 0.04), 0 1px 1px rgba(21, 22, 27, 0.03);
+    --shadow-card-hover: 0 8px 20px rgba(21, 22, 27, 0.07);
+    --maxw: 1120px;
   }
-  h1 { font-size: 24px; }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 500; margin: 0; letter-spacing: -0.01em; }
+
+  a { color: inherit; }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 28px; }
+
+  /* ---------- Nav ---------- */
+  header.nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(247, 247, 244, 0.92);
+    backdrop-filter: saturate(140%) blur(6px);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    max-width: var(--maxw);
+    margin: 0 auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+    background: var(--accent);
+    position: relative;
+    flex: none;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    top: 6px;
+    height: 2px;
+    background: var(--accent-ink);
+    box-shadow: 0 5px 0 var(--accent-ink);
+  }
+  .nav-links {
+    display: flex;
+    gap: 28px;
+    font-size: 14px;
+    color: var(--ink-soft);
+  }
+  .nav-links a { text-decoration: none; transition: color 0.15s ease; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    background: var(--ink);
+    color: #fff;
+    border: none;
+    padding: 9px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .nav-cta:hover { background: var(--accent); }
+  .nav-mobile-hide { display: flex; }
+  @media (max-width: 720px) {
+    .nav-mobile-hide { display: none; }
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 88px 0 76px;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 56px;
+    align-items: center;
+  }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .hero { padding: 56px 0 48px; }
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: var(--accent-soft);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border-radius: 100px;
+    margin-bottom: 20px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .hero h1 {
+    font-size: clamp(34px, 4.6vw, 52px);
+    line-height: 1.08;
+    margin-bottom: 20px;
+  }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 46ch;
+    margin-bottom: 30px;
+  }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-primary, .btn-secondary {
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.15s ease;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #232a4f; box-shadow: var(--shadow-card-hover); transform: translateY(-1px); }
+  .btn-secondary { background: transparent; color: var(--ink); border-color: var(--border-strong); }
+  .btn-secondary:hover { border-color: var(--ink); }
+
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    margin-top: 40px;
+    padding-top: 28px;
+    border-top: 1px solid var(--border);
+  }
+  .hero-stat .num { font-family: var(--font-display); font-size: 26px; }
+  .hero-stat .label { font-size: 12.5px; color: var(--ink-faint); }
+
+  /* Hero demo card — signature element */
+  .hero-demo {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 20px;
+    position: relative;
+  }
+  .demo-transcript {
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    line-height: 1.8;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--border-strong);
+    margin-bottom: 16px;
+  }
+  .demo-transcript .highlight {
+    background: linear-gradient(transparent 60%, #f4d35e55 60%);
+    color: var(--ink);
+    border-radius: 2px;
+    animation: sweep-in 2.4s ease-in-out infinite;
+  }
+  @keyframes sweep-in {
+    0%, 20% { background-size: 0% 100%; }
+    45%, 100% { background-size: 100% 100%; }
+  }
+  .demo-transcript .highlight { background-repeat: no-repeat; }
+  .demo-arrow {
+    text-align: center;
+    color: var(--ink-faint);
+    font-size: 12px;
+    margin: 2px 0 14px;
+    font-family: var(--font-mono);
+  }
+  .demo-card {
+    border-left: 3px solid var(--accent);
+    background: var(--surface-alt);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 16px;
+    animation: rise 0.6s ease 0.3s both;
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .demo-card h4 { margin: 0 0 6px; font-family: var(--font-body); font-size: 14px; font-weight: 600; }
+  .demo-card .demo-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
+
+  /* ---------- Section shell ---------- */
+  section { padding: 76px 0; }
+  .section-head { max-width: 640px; margin-bottom: 44px; }
+  .section-head .eyebrow { margin-bottom: 14px; }
+  .section-head h2 { font-size: clamp(26px, 3vw, 34px); line-height: 1.15; }
+  .section-head p { color: var(--ink-soft); font-size: 15.5px; margin-top: 12px; }
+
+  /* ---------- Overview ---------- */
+  .overview { border-bottom: 1px solid var(--border); }
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  @media (max-width: 760px) { .overview-grid { grid-template-columns: 1fr; } }
+  .overview-item { background: var(--surface); padding: 28px 26px; }
+  .overview-item .step {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .overview-item h3 { font-size: 17px; margin-bottom: 8px; font-family: var(--font-body); font-weight: 600; }
+  .overview-item p { font-size: 14px; color: var(--ink-soft); margin: 0; }
+
+  /* ---------- Features ---------- */
+  .features { border-bottom: 1px solid var(--border); }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+  }
+  @media (max-width: 900px) { .feature-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 540px) { .feature-grid { grid-template-columns: 1fr; } }
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+  }
+  .feature-card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-2px); border-color: var(--border-strong); }
+  .feature-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .feature-card h3 { font-size: 15.5px; font-weight: 600; font-family: var(--font-body); margin-bottom: 7px; }
+  .feature-card p { font-size: 13.5px; color: var(--ink-soft); margin: 0; }
+
+  /* ---------- Workspace ---------- */
+  .workspace { background: var(--surface-alt); border-bottom: 1px solid var(--border); }
+  .workspace-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+    padding: 32px;
+  }
+  @media (max-width: 600px) { .workspace-panel { padding: 22px; } }
+  .field-label {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .field { margin-bottom: 18px; }
+  input[type=text] {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 14.5px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  input[type=text]:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
   textarea {
     width: 100%;
     height: 220px;
-    padding: 12px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-sizing: border-box;
+    padding: 14px;
+    font-family: var(--font-mono);
+    font-size: 13.5px;
+    line-height: 1.6;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink);
+    resize: vertical;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  input[type=text] {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-sizing: border-box;
+  textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
+  textarea::placeholder, input::placeholder { color: var(--ink-faint); }
+
   button {
-    background: #111;
-    color: white;
+    font-family: var(--font-body);
+    background: var(--accent);
+    color: #fff;
     border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
+    padding: 12px 22px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: 14px;
-    margin-top: 10px;
+    font-size: 14.5px;
+    font-weight: 600;
+    margin-top: 6px;
+    transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
   }
-  button:hover { background: #333; }
+  button:hover { background: #232a4f; box-shadow: var(--shadow-card-hover); transform: translateY(-1px); }
+  button:active { transform: translateY(0); }
+
+  #status {
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    margin-top: 12px;
+    font-family: var(--font-mono);
+    min-height: 18px;
+  }
+
+  #results { margin-top: 6px; }
+
+  /* Card styling shared by JS-generated results + past decisions */
   .card {
-    background: white;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 18px 20px;
     margin-top: 14px;
+    box-shadow: var(--shadow-card);
+    animation: card-in 0.4s ease both;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
   }
-  .card h3 { margin: 0 0 6px 0; font-size: 16px; }
-  .meta { color: #666; font-size: 13px; margin-bottom: 8px; }
-  .quote {
-    background: #f5f5f5;
-    padding: 8px;
-    border-left: 3px solid #999;
-    font-size: 13px;
+  .card:hover { box-shadow: var(--shadow-card-hover); transform: translateY(-1px); }
+  @keyframes card-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .card h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .card .meta {
+    font-family: var(--font-mono);
+    color: var(--ink-faint);
+    font-size: 12px;
+    margin-bottom: 10px;
+    letter-spacing: 0.01em;
+  }
+  .card .quote {
+    background: var(--surface-alt);
+    padding: 10px 12px;
+    border-left: 2px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 13.5px;
     font-style: italic;
-    color: #444;
+    color: var(--ink-soft);
   }
-  #status { color: #666; font-size: 13px; margin-top: 8px; }
-  hr { margin: 40px 0; border: none; border-top: 1px solid #ddd; }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+  /* ---------- History ---------- */
+  .history-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .history-head .section-head { margin-bottom: 0; }
+  #searchBox { max-width: 320px; }
+  #pastDecisions p { font-family: var(--font-mono); font-size: 13.5px; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--ink);
+    color: #d8d9df;
+    padding: 52px 0 28px;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 40px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid #2a2b34;
+  }
+  @media (max-width: 700px) { .footer-grid { grid-template-columns: 1fr; gap: 28px; } }
+  .footer-brand { font-family: var(--font-display); font-size: 18px; color: #fff; margin-bottom: 10px; }
+  .footer-grid p { font-size: 13.5px; color: #9a9cab; max-width: 32ch; }
+  .footer-col h4 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9a9cab;
+    margin-bottom: 14px;
+    font-weight: 600;
+  }
+  .footer-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .footer-col a { font-size: 13.5px; color: #d8d9df; text-decoration: none; }
+  .footer-col a:hover { color: #fff; }
+  .footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 22px;
+    font-size: 12.5px;
+    color: #7a7c8b;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* fade-in on scroll utility */
+  .reveal {
+    animation: fade-up 0.6s ease both;
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
 </head>
 <body>
 
-  <h1>🧾 Decision Log Extractor</h1>
-  <p>Paste a meeting transcript below. It extracts every decision made, with who owns it and why.</p>
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand"><span class="brand-mark"></span>Ledger</div>
+      <nav class="nav-links nav-mobile-hide">
+        <a href="#overview">Overview</a>
+        <a href="#features">Features</a>
+        <a href="#workspace">Workspace</a>
+        <a href="#history">History</a>
+      </nav>
+      <a class="nav-cta" href="#workspace">Extract decisions</a>
+    </div>
+  </header>
 
-  <input type="text" id="meetingTitle" placeholder="Meeting title (e.g. Weekly Product Sync - July 10)">
-  <textarea id="transcript" placeholder="Paste your transcript here..."></textarea>
-  <br>
-  <button onclick="extractDecisions()">Extract Decisions</button>
-  <div id="status"></div>
+  <main>
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div>
+          <span class="eyebrow">Meeting intelligence</span>
+          <h1>Every decision your team makes, <em>captured automatically</em>.</h1>
+          <p class="hero-sub">Paste a transcript in and Ledger reads the room — pulling out what was decided, who owns it, and why, so nothing lives only in someone's memory.</p>
+          <div class="hero-actions">
+            <a class="btn-primary" href="#workspace">Extract from a transcript</a>
+            <a class="btn-secondary" href="#history">Browse decision history</a>
+          </div>
+          <div class="hero-stats">
+            <div class="hero-stat"><div class="num">Seconds</div><div class="label">to process a transcript</div></div>
+            <div class="hero-stat"><div class="num">Owner + why</div><div class="label">attached to every decision</div></div>
+            <div class="hero-stat"><div class="num">Searchable</div><div class="label">across every meeting</div></div>
+          </div>
+        </div>
+        <div class="hero-demo" aria-hidden="true">
+          <div class="demo-transcript">
+            "...so given the latency numbers, <span class="highlight">let's move the sessions table to Postgres before the next release</span>. Rahul, can you own the migration plan?"
+          </div>
+          <div class="demo-arrow">↓ extracted as ↓</div>
+          <div class="demo-card">
+            <h4>Move sessions table to Postgres</h4>
+            <div class="demo-meta">OWNER: RAHUL · BEFORE NEXT RELEASE</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <div id="results"></div>
+    <section class="overview" id="overview">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">How it works</span>
+          <h2>From raw conversation to a clean record.</h2>
+          <p>No setup, no tagging, no manual note-taking. Drop in a transcript and Ledger does the reading for you.</p>
+        </div>
+        <div class="overview-grid">
+          <div class="overview-item">
+            <div class="step">01</div>
+            <h3>Paste the transcript</h3>
+            <p>Bring in raw text from any call, standup, or planning session — no formatting required.</p>
+          </div>
+          <div class="overview-item">
+            <div class="step">02</div>
+            <h3>Ledger reads it</h3>
+            <p>It finds the moments where something was actually decided, not just discussed.</p>
+          </div>
+          <div class="overview-item">
+            <div class="step">03</div>
+            <h3>Review the log</h3>
+            <p>Each decision arrives with an owner, a rationale, and the exact line it came from.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <hr>
+    <section class="features" id="features">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">Built for real meetings</span>
+          <h2>Everything a decision needs to be findable later.</h2>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">Dc</div>
+            <h3>Decision detection</h3>
+            <p>Separates firm decisions from open discussion, so the log stays free of noise.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">Ow</div>
+            <h3>Owner tagging</h3>
+            <p>Attaches the person accountable for each decision whenever it's stated in the conversation.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">Wy</div>
+            <h3>Rationale capture</h3>
+            <p>Keeps the reasoning behind a call, not just the outcome — useful when it's questioned later.</p>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">Sr</div>
+            <h3>Full-text search</h3>
+            <p>Look up any past decision by topic, keyword, or the person who made it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <h2>📚 Past Decisions</h2>
-  <input type="text" id="searchBox" placeholder="Search past decisions (e.g. 'Postgres', 'Rahul')" oninput="loadDecisions()">
-  <div id="pastDecisions"></div>
+    <section class="workspace" id="workspace">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">Workspace</span>
+          <h2>Extract decisions from a transcript</h2>
+          <p>Paste a meeting transcript below. Ledger extracts every decision made, with who owns it and why.</p>
+        </div>
+
+        <div class="workspace-panel">
+          <div class="field">
+            <label class="field-label" for="meetingTitle">Meeting title</label>
+            <input type="text" id="meetingTitle" placeholder="e.g. Weekly Product Sync — July 10">
+          </div>
+          <div class="field">
+            <label class="field-label" for="transcript">Transcript</label>
+            <textarea id="transcript" placeholder="Paste your transcript here..."></textarea>
+          </div>
+          <button onclick="extractDecisions()">Extract decisions</button>
+          <div id="status"></div>
+          <div id="results"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="history">
+      <div class="wrap">
+        <div class="history-head">
+          <div class="section-head">
+            <span class="eyebrow">Decision history</span>
+            <h2>Past decisions</h2>
+          </div>
+          <div class="field" style="margin-bottom:0; min-width:240px; flex:1;">
+            <label class="field-label" for="searchBox">Search</label>
+            <input type="text" id="searchBox" placeholder="Search past decisions (e.g. 'Postgres', 'Rahul')" oninput="loadDecisions()">
+          </div>
+        </div>
+        <div id="pastDecisions"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">Ledger</div>
+          <p>A running record of what your team decided, why, and who's responsible — built from the transcripts you already have.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#workspace">Workspace</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="#history">Decision history</a></li>
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">Support</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 Ledger. All rights reserved.</span>
+        <span>Built for teams who don't want to re-litigate the same call twice.</span>
+      </div>
+    </div>
+  </footer>
 
 <script>
   const API_URL = "http://127.0.0.1:8000"; // change this after you deploy the backend
