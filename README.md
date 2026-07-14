@@ -17,7 +17,7 @@ Paste in a raw meeting transcript, and the app:
 
 ## Live Demo
 
-- **Frontend:** [add your Vercel link here]
+- **Frontend:** [https://decision-log-extractor.vercel.app/]
 - **API docs:** [add your Render `/docs` link here]
 
 ## Tech Stack
