@@ -1,0 +1,30 @@
+[Weekly Product Sync - July 10]
+
+Priya: Okay let's talk about the database. We've been going back and forth between
+Mongo and Postgres for two weeks now.
+
+Rahul: I still think Mongo is more flexible for the early stage.
+
+Priya: Sure, but our data is basically all relational — users, orders, payments.
+Let's just go with Postgres, we all know it and the data is relational anyway.
+
+Rahul: Fine, works for me. Postgres it is.
+
+Priya: Great. Next — the onboarding flow redesign. Sam, where are we on that?
+
+Sam: Still gathering feedback, not ready to decide yet. Maybe next week.
+
+Priya: Okay, no decision there, let's revisit next sync.
+
+Priya: Last thing — do we ship the referral feature before or after the pricing page update?
+
+Rahul: I think pricing page first, referral can wait, it's not blocking revenue.
+
+Sam: Agreed, pricing page is more urgent since sales is asking for it daily.
+
+Priya: Okay, decided — pricing page update ships first, referral feature gets pushed
+to next sprint. Rahul, you're leading the pricing page work.
+
+Rahul: Got it, I'll own that.
+
+Priya: Cool, that's everything for today.

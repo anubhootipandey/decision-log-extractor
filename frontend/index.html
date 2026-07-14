@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Decision Log Extractor</title>
+<style>
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background: #fafafa;
+    color: #1a1a1a;
+  }
+  h1 { font-size: 24px; }
+  textarea {
+    width: 100%;
+    height: 220px;
+    padding: 12px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  input[type=text] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+  button {
+    background: #111;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-top: 10px;
+  }
+  button:hover { background: #333; }
+  .card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 14px;
+  }
+  .card h3 { margin: 0 0 6px 0; font-size: 16px; }
+  .meta { color: #666; font-size: 13px; margin-bottom: 8px; }
+  .quote {
+    background: #f5f5f5;
+    padding: 8px;
+    border-left: 3px solid #999;
+    font-size: 13px;
+    font-style: italic;
+    color: #444;
+  }
+  #status { color: #666; font-size: 13px; margin-top: 8px; }
+  hr { margin: 40px 0; border: none; border-top: 1px solid #ddd; }
+</style>
+</head>
+<body>
+
+  <h1>🧾 Decision Log Extractor</h1>
+  <p>Paste a meeting transcript below. It extracts every decision made, with who owns it and why.</p>
+
+  <input type="text" id="meetingTitle" placeholder="Meeting title (e.g. Weekly Product Sync - July 10)">
+  <textarea id="transcript" placeholder="Paste your transcript here..."></textarea>
+  <br>
+  <button onclick="extractDecisions()">Extract Decisions</button>
+  <div id="status"></div>
+
+  <div id="results"></div>
+
+  <hr>
+
+  <h2>📚 Past Decisions</h2>
+  <input type="text" id="searchBox" placeholder="Search past decisions (e.g. 'Postgres', 'Rahul')" oninput="loadDecisions()">
+  <div id="pastDecisions"></div>
+
+<script>
+  const API_URL = "http://127.0.0.1:8000"; // change this after you deploy the backend
+
+  async function extractDecisions() {
+    const transcript = document.getElementById("transcript").value;
+    const meetingTitle = document.getElementById("meetingTitle").value || "Untitled meeting";
+    const status = document.getElementById("status");
+    const results = document.getElementById("results");
+
+    if (!transcript.trim()) {
+      status.textContent = "Please paste a transcript first.";
+      return;
+    }
+
+    status.textContent = "Extracting... (this calls the AI model, takes a few seconds)";
+    results.innerHTML = "";
+
+    try {
+      const res = await fetch(`${API_URL}/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript, meeting_title: meetingTitle })
+      });
+
+      const data = await res.json();
+      status.textContent = `✅ Found ${data.count} decision(s).`;
+
+      data.decisions.forEach(d => {
+        results.innerHTML += `
+          <div class="card">
+            <h3>${d.decision}</h3>
+            <div class="meta">Owner: ${d.owner || "unknown"} · Rationale: ${d.rationale || "not stated"}</div>
+            <div class="quote">"${d.source_quote || ""}"</div>
+          </div>`;
+      });
+
+      loadDecisions(); // refresh the past-decisions list too
+    } catch (err) {
+      status.textContent = "❌ Error connecting to backend. Is it running?";
+      console.error(err);
+    }
+  }
+
+  async function loadDecisions() {
+    const search = document.getElementById("searchBox").value;
+    const container = document.getElementById("pastDecisions");
+
+    try {
+      const res = await fetch(`${API_URL}/decisions${search ? "?search=" + encodeURIComponent(search) : ""}`);
+      const data = await res.json();
+
+      if (data.length === 0) {
+        container.innerHTML = "<p style='color:#888'>No decisions logged yet.</p>";
+        return;
+      }
+
+      container.innerHTML = data.map(d => `
+        <div class="card">
+          <h3>${d.decision}</h3>
+          <div class="meta">
+            ${d.meeting_title || ""} · Owner: ${d.owner || "unknown"} · ${new Date(d.created_at).toLocaleDateString()}
+          </div>
+          <div class="quote">"${d.source_quote || ""}"</div>
+        </div>
+      `).join("");
+    } catch (err) {
+      container.innerHTML = "<p style='color:#c00'>Could not load past decisions. Is the backend running?</p>";
+    }
+  }
+
+  // Load past decisions when the page first opens
+  loadDecisions();
+</script>
+
+</body>
+</html>
