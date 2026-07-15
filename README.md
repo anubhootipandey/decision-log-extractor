@@ -1,6 +1,6 @@
-# Decision Log Extractor
+# 🧾 Ledger — Decision Log Extractor
 
-Turn messy meeting transcripts into a structured, searchable log of what was actually decided — automatically, using AI.
+Turn messy meeting transcripts into a private, structured, searchable log of what was actually decided — automatically, using AI.
 
 ## The Problem
 
@@ -13,12 +13,12 @@ Paste in a raw meeting transcript, and the app:
 - Identifies the owner responsible for each decision
 - Captures the rationale behind it, if stated
 - Grounds every extraction in an exact quote from the source transcript, so nothing is invented
-- Stores it in a searchable decision log you can query later
+- Stores it in a private, searchable decision log — scoped to your account, enforced at the database level
 
 ## Live Demo
 
-- **Frontend:** [https://decision-log-extractor.vercel.app/]
-- **API docs:** [add your Render `/docs` link here]
+- **App:** [https://decision-log-extractor.vercel.app/]
+- **API docs:** [https://decision-log-extractor.onrender.com/docs]
 
 ## Tech Stack
 
@@ -26,18 +26,21 @@ Paste in a raw meeting transcript, and the app:
 |---|---|
 | AI extraction | Groq API (Llama 3.3 70B) |
 | Backend | FastAPI (Python) |
-| Database | SQLite |
-| Frontend | Vanilla HTML/CSS/JS |
+| Auth | Supabase Auth (email/password, JWT sessions) |
+| Database | Supabase Postgres, with Row Level Security |
+| Frontend | Vanilla HTML/CSS/JS, Supabase JS client |
 | Backend hosting | Render |
 | Frontend hosting | Vercel |
 
 ## How It Works
 
-1. User pastes a transcript into the frontend
-2. Frontend sends it to a FastAPI `/extract` endpoint
-3. Backend calls Groq's LLM with a structured prompt requiring a JSON response, including a mandatory `source_quote` field per decision — this forces the model to ground each extraction in real text rather than inventing plausible-sounding decisions
-4. Extracted decisions are validated, stored in SQLite, and returned to the frontend
-5. Past decisions are searchable via a `/decisions?search=` endpoint
+1. User signs up / logs in via Supabase Auth; the frontend holds a short-lived JWT session
+2. User pastes a transcript into the app
+3. Frontend sends the transcript and the user's access token to a FastAPI `/extract` endpoint
+4. Backend verifies the token against Supabase, then calls Groq's LLM with a structured prompt requiring a JSON response, including a mandatory `source_quote` field per decision — this forces the model to ground each extraction in real text rather than inventing plausible-sounding decisions
+5. Extracted decisions are inserted into Postgres, tagged with the user's id
+6. Row Level Security policies in Postgres ensure a user can only ever read or modify their own rows — enforced by the database itself, not just application code
+7. Past decisions are searchable per-user via a `/decisions?search=` endpoint
 
 ## Project Structure
 
@@ -45,52 +48,64 @@ Paste in a raw meeting transcript, and the app:
 decision-log-extractor/
   backend/
     step1_extract.py     # standalone script to test extraction logic in isolation
-    main.py               # FastAPI app: /extract and /decisions endpoints
+    main.py               # FastAPI app: auth-protected /extract and /decisions endpoints
+    schema.sql             # Postgres schema + Row Level Security policies
     requirements.txt
     runtime.txt
     sample_transcript.txt
     .env.example
   frontend/
-    index.html            # single-file UI, no build step
+    index.html            # structure + auth gate
+    style.css
+    script.js              # Supabase auth + API calls
   README.md
   DOCUMENTATION.md
 ```
 
 ## Running Locally
 
+**1. Set up Supabase** (free tier): create a project at supabase.com, run `backend/schema.sql` in the SQL Editor, and grab your Project URL + anon key from Project Settings → API.
+
+**2. Backend**
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate      # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
-
-Create a `.env` file in `backend/` (see `.env.example`):
+Create `.env` in `backend/` (see `.env.example`):
 ```
 GROQ_API_KEY=your-groq-api-key
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-public-key
 ```
-
-Start the backend:
 ```bash
 uvicorn main:app --reload
 ```
 
-Open `frontend/index.html` in a browser. Make sure `API_URL` inside it points to `http://127.0.0.1:8000` for local use.
+**3. Frontend**
+In `frontend/script.js`, set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `API_URL`. Then open `frontend/index.html` (or serve it: `python -m http.server 5500`).
+
+## Security Notes
+
+- The Supabase `anon` key and project URL are safe to expose client-side by design — they grant no access on their own. Every request is filtered by Row Level Security policies enforced inside Postgres (`auth.uid() = user_id`), not by application-level checks.
+- The `service_role` key (which bypasses RLS) and the Groq API key are never exposed to the frontend — both live only in the backend's environment variables.
+- Verified data isolation manually by creating two test accounts and confirming neither could see the other's decisions.
 
 ## Known Limitations
 
-- SQLite storage resets on Render's free tier when the service restarts — fine for a demo, not for production use
-- Extraction quality depends on transcript clarity; very informal or overlapping speech reduces accuracy
-- Single-user, no authentication — this is an MVP, not a multi-tenant product
+- No password reset flow yet (Supabase supports it; not wired into the UI)
+- Single free-tier Groq model; no fallback if the API is rate-limited or down
+- No automated test suite yet — verification has been manual (see Documentation)
 
 ## Roadmap
 
-- Persistent database (Supabase/Postgres)
+- Edit/delete a decision after extraction
+- Export to CSV/Markdown
 - Semantic search over past decisions using embeddings
 - Auto-flag when a new decision contradicts a past one
-- Direct integration with meeting platforms (Zoom/Google Meet transcripts)
 - Slack digest of decisions made each week
 
 ## Why I Built This
 
-I wanted a project that reflected a real, recurring workflow problem rather than another to-do list or CRM clone. This one specifically demonstrates structured LLM output extraction, prompt design for factual grounding (not hallucination), and a full deployable stack — end to end, for free.
+I wanted a project that reflected a real, recurring workflow problem rather than another to-do list or CRM clone, and one that went past "AI wrapper" territory into an actual product: authenticated users, a real database with enforced access control, and a deployed, working full stack — end to end, for free.
