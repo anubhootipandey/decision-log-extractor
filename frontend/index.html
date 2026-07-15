@@ -20,9 +20,15 @@
         <a href="#workspace">Workspace</a>
         <a href="#history">History</a>
       </nav>
-      <div class="nav-cta" id="navUserBar" style="display:none;">
-        <span id="navUserEmail" class="nav-user-email"></span>
-        <button class="nav-logout" type="button" onclick="handleLogout()">Log out</button>
+      <div class="user-menu" id="navUserBar" style="display:none;">
+        <button type="button" class="user-chip" id="userChipBtn" onclick="toggleUserMenu()">
+          <span class="avatar" id="navAvatar"></span>
+        </button>
+        <div class="user-dropdown hidden" id="userDropdown">
+          <div class="user-dropdown-email" id="navUserEmail"></div>
+          <hr>
+          <button class="user-dropdown-item" type="button" onclick="handleLogout()">Log out</button>
+        </div>
       </div>
       <a class="nav-cta" href="#authGate" id="navCtaLoggedOut">Log in</a>
     </div>
@@ -31,6 +37,10 @@
   <section class="auth-gate" id="authGate">
     <div class="wrap">
       <div class="auth-card">
+        <div class="auth-card-brand">
+          <span class="brand-mark"></span>
+          <span class="auth-card-title">Ledger</span>
+        </div>
         <div class="auth-tabs">
           <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log in</button>
           <button type="button" class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign up</button>
@@ -39,26 +49,39 @@
         <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
           <div class="field">
             <label class="field-label" for="loginEmail">Email</label>
-            <input type="text" id="loginEmail" placeholder="you@example.com" required>
+            <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required>
           </div>
           <div class="field">
-            <label class="field-label" for="loginPassword">Password</label>
-            <input type="password" id="loginPassword" placeholder="••••••••" required>
+            <div class="field-row">
+              <label class="field-label" for="loginPassword" style="margin-bottom:0;">Password</label>
+              <a href="#" class="forgot-link" onclick="handleForgotPassword(event)">Forgot password?</a>
+            </div>
+            <div class="password-wrap">
+              <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="pw-toggle" onclick="togglePassword('loginPassword', this)" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
           </div>
-          <button type="submit">Log in</button>
+          <button type="submit" id="loginBtn"><span id="loginBtnLabel">Log in</span></button>
           <div id="loginStatus" class="auth-status"></div>
         </form>
 
         <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
           <div class="field">
             <label class="field-label" for="signupEmail">Email</label>
-            <input type="text" id="signupEmail" placeholder="you@example.com" required>
+            <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" required>
           </div>
           <div class="field">
             <label class="field-label" for="signupPassword">Password</label>
-            <input type="password" id="signupPassword" placeholder="At least 6 characters" required minlength="6">
+            <div class="password-wrap">
+              <input type="password" id="signupPassword" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+              <button type="button" class="pw-toggle" onclick="togglePassword('signupPassword', this)" aria-label="Show password">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </div>
           </div>
-          <button type="submit">Create account</button>
+          <button type="submit" id="signupBtn"><span id="signupBtnLabel">Create account</span></button>
           <div id="signupStatus" class="auth-status"></div>
         </form>
       </div>
