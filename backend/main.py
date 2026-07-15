@@ -1,63 +1,80 @@
 """
-STEP 2: FastAPI backend.
-Wraps the extraction logic in an API, and stores results in a local SQLite
-database (no external database needed to get started — free and zero setup).
+STEP 3: FastAPI backend with Supabase (Postgres + Auth).
+
+This replaces the local SQLite version. Decisions are now:
+- scoped to the logged-in user (via Supabase Auth)
+- stored in a real Postgres database (Supabase's free tier)
+- protected by Row Level Security, enforced by Postgres itself,
+  not just by application code
 
 Run with:  uvicorn main:app --reload
-Then open: http://127.0.0.1:8000/docs   <- auto-generated API testing page
+Then open: http://127.0.0.1:8000/docs
 """
 
 import os
 import json
-import sqlite3
-from dotenv import load_dotenv
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
+from supabase import create_client, Client
+from dotenv import load_dotenv
 
 load_dotenv()
 
-# ---------------------------------------------------------
-# Setup
-# ---------------------------------------------------------
-
 app = FastAPI(title="Decision Log Extractor")
 
-# Allow the frontend (running on a different port) to call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for local dev only; restrict this in real deployment
+    allow_origins=["*"],  # for a real product, restrict this to your actual frontend domain
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "decisions.db")
+groq_client = Groq(api_key=GROQ_API_KEY)
 
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS decisions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            decision TEXT NOT NULL,
-            owner TEXT,
-            rationale TEXT,
-            source_quote TEXT,
-            meeting_title TEXT,
-            created_at TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+MAX_TRANSCRIPT_CHARS = 20000  # safety cap so one request can't drain your Groq quota
 
 
-init_db()
+def get_user_client(access_token: str) -> Client:
+    """Creates a Supabase client authenticated AS the calling user.
+    Every query made with this client is automatically filtered by
+    Row Level Security policies to that user's own rows — the backend
+    doesn't need to manually filter by user_id, Postgres does it."""
+    client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    client.postgrest.auth(access_token)
+    return client
+
+
+def get_current_user(authorization: Optional[str] = Header(None)):
+    """FastAPI dependency: verifies the Authorization header against
+    Supabase and returns the authenticated user's id, email, and token.
+    Raises 401 if the header is missing or the session is invalid/expired."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header.")
+
+    token = authorization.split(" ", 1)[1]
+    auth_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    try:
+        user_response = auth_client.auth.get_user(token)
+        user = user_response.user
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired session.")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired session.")
+
+    return {"id": user.id, "email": user.email, "token": token}
+
 
 SYSTEM_PROMPT = """You are a meeting-notes analyst. You will be given a raw meeting
 transcript. Extract every DECISION that was made during the meeting.
@@ -76,31 +93,23 @@ If there are no clear decisions, respond with an empty array: []
 """
 
 
-# ---------------------------------------------------------
-# Request / response models
-# ---------------------------------------------------------
-
 class ExtractRequest(BaseModel):
     transcript: str
     meeting_title: Optional[str] = "Untitled meeting"
 
 
 class Decision(BaseModel):
-    id: int
+    id: str
     decision: str
-    owner: Optional[str]
-    rationale: Optional[str]
-    source_quote: Optional[str]
-    meeting_title: Optional[str]
+    owner: Optional[str] = None
+    rationale: Optional[str] = None
+    source_quote: Optional[str] = None
+    meeting_title: Optional[str] = None
     created_at: str
 
 
-# ---------------------------------------------------------
-# Core extraction function (same logic as step1_extract.py)
-# ---------------------------------------------------------
-
 def extract_decisions(transcript: str) -> list:
-    response = client.chat.completions.create(
+    response = groq_client.chat.completions.create(
         model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -121,58 +130,62 @@ def extract_decisions(transcript: str) -> list:
         return []
 
 
-# ---------------------------------------------------------
-# Endpoints
-# ---------------------------------------------------------
-
 @app.post("/extract")
-def extract(req: ExtractRequest):
+def extract(req: ExtractRequest, user=Depends(get_current_user)):
     if not req.transcript.strip():
         raise HTTPException(status_code=400, detail="Transcript is empty.")
 
+    if len(req.transcript) > MAX_TRANSCRIPT_CHARS:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Transcript too long (max {MAX_TRANSCRIPT_CHARS} characters).",
+        )
+
     decisions = extract_decisions(req.transcript)
 
-    conn = sqlite3.connect(DB_PATH)
-    now = datetime.utcnow().isoformat()
-
-    for d in decisions:
-        conn.execute(
-            """INSERT INTO decisions (decision, owner, rationale, source_quote, meeting_title, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (
-                d.get("decision", ""),
-                d.get("owner", "unknown"),
-                d.get("rationale", "not stated"),
-                d.get("source_quote", ""),
-                req.meeting_title,
-                now,
-            ),
-        )
-    conn.commit()
-    conn.close()
+    if decisions:
+        supabase = get_user_client(user["token"])
+        rows_to_insert = [
+            {
+                "user_id": user["id"],
+                "decision": d.get("decision", ""),
+                "owner": d.get("owner", "unknown"),
+                "rationale": d.get("rationale", "not stated"),
+                "source_quote": d.get("source_quote", ""),
+                "meeting_title": req.meeting_title,
+            }
+            for d in decisions
+        ]
+        supabase.table("decisions").insert(rows_to_insert).execute()
 
     return {"count": len(decisions), "decisions": decisions}
 
 
 @app.get("/decisions", response_model=List[Decision])
-def get_decisions(search: Optional[str] = None):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+def get_decisions(search: Optional[str] = None, user=Depends(get_current_user)):
+    supabase = get_user_client(user["token"])
+
+    query = supabase.table("decisions").select("*").order("created_at", desc=True)
 
     if search:
-        rows = conn.execute(
-            """SELECT * FROM decisions
-               WHERE decision LIKE ? OR owner LIKE ? OR rationale LIKE ?
-               ORDER BY id DESC""",
-            (f"%{search}%", f"%{search}%", f"%{search}%"),
-        ).fetchall()
-    else:
-        rows = conn.execute("SELECT * FROM decisions ORDER BY id DESC").fetchall()
+        # Row Level Security still applies here — this only ever searches
+        # within rows owned by the authenticated user.
+        safe_search = search.replace(",", " ").replace("%", " ")
+        query = query.or_(
+            f"decision.ilike.%{safe_search}%,owner.ilike.%{safe_search}%,rationale.ilike.%{safe_search}%"
+        )
 
-    conn.close()
-    return [dict(row) for row in rows]
+    result = query.execute()
+    return result.data
+
+
+@app.delete("/decisions/{decision_id}")
+def delete_decision(decision_id: str, user=Depends(get_current_user)):
+    supabase = get_user_client(user["token"])
+    supabase.table("decisions").delete().eq("id", decision_id).execute()
+    return {"status": "deleted"}
 
 
 @app.get("/")
 def root():
-    return {"status": "Decision Log Extractor API is running"}
+    return {"status": "Decision Log Extractor API is running (Supabase-backed)"}

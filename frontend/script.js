@@ -1,8 +1,13 @@
+const SUPABASE_URL = "https://znoqwwhvkqcnlseapiyd.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpub3F3d2h2a3FjbmxzZWFwaXlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwOTc2MjcsImV4cCI6MjA5OTY3MzYyN30.ETCkkS7aFIx-wMPWK334r5b5_HKAeYXlUXfttuk6ifk"; 
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const API_URL =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://127.0.0.1:8000"
     : "https://decision-log-extractor.onrender.com"; 
-    
+
 function escapeHtml(str) {
   if (!str) return "";
   return str
@@ -11,6 +16,90 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+// ---------------- Auth ----------------
+
+function switchAuthTab(tab) {
+  document.getElementById("tabLogin").classList.toggle("active", tab === "login");
+  document.getElementById("tabSignup").classList.toggle("active", tab === "signup");
+  document.getElementById("loginForm").classList.toggle("hidden", tab !== "login");
+  document.getElementById("signupForm").classList.toggle("hidden", tab !== "signup");
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const status = document.getElementById("loginStatus");
+
+  status.className = "auth-status";
+  status.textContent = "Logging in...";
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    status.className = "auth-status err";
+    status.textContent = error.message;
+  } else {
+    status.className = "auth-status ok";
+    status.textContent = "Logged in.";
+  }
+}
+
+async function handleSignup(event) {
+  event.preventDefault();
+  const email = document.getElementById("signupEmail").value.trim();
+  const password = document.getElementById("signupPassword").value;
+  const status = document.getElementById("signupStatus");
+
+  status.className = "auth-status";
+  status.textContent = "Creating your account...";
+
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+
+  if (error) {
+    status.className = "auth-status err";
+    status.textContent = error.message;
+  } else {
+    status.className = "auth-status ok";
+    status.textContent = "Account created. If email confirmation is on, check your inbox — otherwise you're logged in.";
+  }
+}
+
+async function handleLogout() {
+  await supabaseClient.auth.signOut();
+}
+
+async function getAccessToken() {
+  const { data } = await supabaseClient.auth.getSession();
+  return data.session ? data.session.access_token : null;
+}
+
+function showApp(user) {
+  document.getElementById("authGate").classList.add("hidden");
+  document.getElementById("appContent").classList.remove("hidden");
+  document.getElementById("navUserBar").style.display = "flex";
+  document.getElementById("navCtaLoggedOut").style.display = "none";
+  document.getElementById("navUserEmail").textContent = user.email;
+  loadDecisions();
+}
+
+function showAuthGate() {
+  document.getElementById("authGate").classList.remove("hidden");
+  document.getElementById("appContent").classList.add("hidden");
+  document.getElementById("navUserBar").style.display = "none";
+  document.getElementById("navCtaLoggedOut").style.display = "inline-block";
+}
+
+supabaseClient.auth.onAuthStateChange((_event, session) => {
+  if (session && session.user) {
+    showApp(session.user);
+  } else {
+    showAuthGate();
+  }
+});
+
+// ---------------- App logic ----------------
 
 function setLoading(isLoading) {
   const btn = document.getElementById("extractBtn");
@@ -35,6 +124,13 @@ async function extractDecisions() {
     return;
   }
 
+  const token = await getAccessToken();
+  if (!token) {
+    status.className = "err";
+    status.textContent = "Your session expired — please log in again.";
+    return;
+  }
+
   status.className = "";
   status.textContent = "Extracting... (this calls the AI model, takes a few seconds)";
   results.innerHTML = "";
@@ -43,12 +139,16 @@ async function extractDecisions() {
   try {
     const res = await fetch(`${API_URL}/extract`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
       body: JSON.stringify({ transcript, meeting_title: meetingTitle })
     });
 
     if (!res.ok) {
-      throw new Error(`Server responded with ${res.status}`);
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(errBody.detail || `Server responded with ${res.status}`);
     }
 
     const data = await res.json();
@@ -70,10 +170,10 @@ async function extractDecisions() {
       ).join("");
     }
 
-    loadDecisions(); // refresh the past-decisions list too
+    loadDecisions();
   } catch (err) {
     status.className = "err";
-    status.textContent = "❌ Could not reach the backend. Is it running / deployed?";
+    status.textContent = `❌ ${err.message || "Could not reach the backend."}`;
     console.error(err);
   } finally {
     setLoading(false);
@@ -96,7 +196,6 @@ function updateCharCount() {
   if (el) el.textContent = `${count.toLocaleString()} characters`;
 }
 
-// Debounce so search doesn't fire an API call on every single keystroke
 let searchTimer = null;
 function onSearchInput() {
   clearTimeout(searchTimer);
@@ -107,8 +206,13 @@ async function loadDecisions() {
   const search = document.getElementById("searchBox").value;
   const container = document.getElementById("pastDecisions");
 
+  const token = await getAccessToken();
+  if (!token) return; // not logged in yet — auth gate is showing instead
+
   try {
-    const res = await fetch(`${API_URL}/decisions${search ? "?search=" + encodeURIComponent(search) : ""}`);
+    const res = await fetch(`${API_URL}/decisions${search ? "?search=" + encodeURIComponent(search) : ""}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
     if (!res.ok) throw new Error(`Server responded with ${res.status}`);
     const data = await res.json();
 
@@ -132,7 +236,6 @@ async function loadDecisions() {
   }
 }
 
-// Keyboard shortcut: Ctrl/Cmd + Enter inside the textarea submits the form
 document.addEventListener("DOMContentLoaded", () => {
   const transcriptEl = document.getElementById("transcript");
   transcriptEl.addEventListener("keydown", (e) => {
@@ -143,7 +246,4 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   transcriptEl.addEventListener("input", updateCharCount);
   updateCharCount();
-
-  // Load past decisions when the page first opens
-  loadDecisions();
 });

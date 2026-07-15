@@ -20,10 +20,52 @@
         <a href="#workspace">Workspace</a>
         <a href="#history">History</a>
       </nav>
-      <a class="nav-cta" href="#workspace">Extract decisions</a>
+      <div class="nav-cta" id="navUserBar" style="display:none;">
+        <span id="navUserEmail" class="nav-user-email"></span>
+        <button class="nav-logout" type="button" onclick="handleLogout()">Log out</button>
+      </div>
+      <a class="nav-cta" href="#authGate" id="navCtaLoggedOut">Log in</a>
     </div>
   </header>
 
+  <section class="auth-gate" id="authGate">
+    <div class="wrap">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log in</button>
+          <button type="button" class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign up</button>
+        </div>
+
+        <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+          <div class="field">
+            <label class="field-label" for="loginEmail">Email</label>
+            <input type="text" id="loginEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required>
+          </div>
+          <button type="submit">Log in</button>
+          <div id="loginStatus" class="auth-status"></div>
+        </form>
+
+        <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
+          <div class="field">
+            <label class="field-label" for="signupEmail">Email</label>
+            <input type="text" id="signupEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="signupPassword">Password</label>
+            <input type="password" id="signupPassword" placeholder="At least 6 characters" required minlength="6">
+          </div>
+          <button type="submit">Create account</button>
+          <div id="signupStatus" class="auth-status"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div id="appContent" class="hidden">
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
@@ -38,7 +80,7 @@
           <div class="hero-stats">
             <div class="hero-stat"><div class="num">Seconds</div><div class="label">to process a transcript</div></div>
             <div class="hero-stat"><div class="num">Owner + why</div><div class="label">attached to every decision</div></div>
-            <div class="hero-stat"><div class="num">Searchable</div><div class="label">across every meeting</div></div>
+            <div class="hero-stat"><div class="num">Private</div><div class="label">your log, your account only</div></div>
           </div>
         </div>
         <div class="hero-demo" aria-hidden="true">
@@ -75,7 +117,7 @@
           <div class="overview-item">
             <div class="step">03</div>
             <h3>Review the log</h3>
-            <p>Each decision arrives with an owner, a rationale, and the exact line it came from.</p>
+            <p>Each decision arrives with an owner, a rationale, and the exact line it came from — private to your account.</p>
           </div>
         </div>
       </div>
@@ -104,9 +146,9 @@
             <p>Keeps the reasoning behind a call, not just the outcome — useful when it's questioned later.</p>
           </div>
           <div class="feature-card">
-            <div class="feature-icon">Sr</div>
-            <h3>Full-text search</h3>
-            <p>Look up any past decision by topic, keyword, or the person who made it.</p>
+            <div class="feature-icon">Pr</div>
+            <h3>Private by account</h3>
+            <p>Your log is yours — every decision is scoped to your account with database-level access control.</p>
           </div>
         </div>
       </div>
@@ -191,7 +233,9 @@
       </div>
     </div>
   </footer>
+  </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js"></script>
 </body>
 </html>
