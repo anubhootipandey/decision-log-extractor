@@ -20,14 +20,6 @@ Paste in a raw meeting transcript, and the app:
 - **App:** [https://decision-log-extractor.vercel.app/]
 - **API docs:** [https://decision-log-extractor.onrender.com/docs]
 
-## Screenshots
-<img width="885" height="548" alt="Screenshot 2026-07-15 222750" src="https://github.com/user-attachments/assets/6bb00649-4f33-477c-a9b5-8f8ce663bea5" />
-
-<img width="853" height="532" alt="Screenshot 2026-07-15 222813" src="https://github.com/user-attachments/assets/dec49b49-bc65-4857-9c92-73d6fd7f8d0c" />
-
-<img width="859" height="250" alt="Screenshot 2026-07-15 222828" src="https://github.com/user-attachments/assets/8da31e05-aac6-432f-9214-8a6d32dc4263" />
-
-
 ## Tech Stack
 
 | Layer | Tech |
