@@ -35,6 +35,32 @@ function togglePassword(inputId, btn) {
   btn.classList.toggle("active", isHidden);
 }
  
+function validateSignupEmail() {
+  const email = document.getElementById("signupEmail").value.trim();
+  const hint = document.getElementById("signupEmailHint");
+  if (!email) {
+    hint.className = "field-hint";
+    hint.textContent = "";
+    return;
+  }
+  const looksValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  hint.className = looksValid ? "field-hint ok" : "field-hint err";
+  hint.textContent = looksValid ? "Looks good." : "Enter a valid email address.";
+}
+ 
+function validateSignupPassword() {
+  const pw = document.getElementById("signupPassword").value;
+  const reqs = {
+    reqLength: pw.length >= 8,
+    reqNumber: /\d/.test(pw),
+    reqLetter: /[a-zA-Z]/.test(pw)
+  };
+  Object.entries(reqs).forEach(([id, met]) => {
+    document.getElementById(id).classList.toggle("met", met);
+  });
+  return Object.values(reqs).every(Boolean);
+}
+ 
 function setAuthLoading(formPrefix, isLoading, loadingText) {
   const btn = document.getElementById(`${formPrefix}Btn`);
   const label = document.getElementById(`${formPrefix}BtnLabel`);
@@ -140,20 +166,20 @@ document.addEventListener("click", (e) => {
 });
  
 function showApp(user) {
+  document.getElementById("mainNav").classList.remove("hidden");
   document.getElementById("authGate").classList.add("hidden");
   document.getElementById("appContent").classList.remove("hidden");
   document.getElementById("navUserBar").style.display = "flex";
-  document.getElementById("navCtaLoggedOut").style.display = "none";
   document.getElementById("navUserEmail").textContent = user.email;
   document.getElementById("navAvatar").textContent = (user.email || "?").charAt(0);
   loadDecisions();
 }
  
 function showAuthGate() {
+  document.getElementById("mainNav").classList.add("hidden");
   document.getElementById("authGate").classList.remove("hidden");
   document.getElementById("appContent").classList.add("hidden");
   document.getElementById("navUserBar").style.display = "none";
-  document.getElementById("navCtaLoggedOut").style.display = "inline-block";
 }
  
 supabaseClient.auth.onAuthStateChange((_event, session) => {
@@ -312,4 +338,3 @@ document.addEventListener("DOMContentLoaded", () => {
   transcriptEl.addEventListener("input", updateCharCount);
   updateCharCount();
 });
- 

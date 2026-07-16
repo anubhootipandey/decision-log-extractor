@@ -11,16 +11,17 @@
 </head>
 <body>
 
-  <header class="nav">
+  <header class="nav hidden" id="mainNav">
     <div class="nav-inner">
       <div class="brand"><span class="brand-mark"></span>Ledger</div>
       <nav class="nav-links nav-mobile-hide">
         <a href="#overview">Overview</a>
         <a href="#features">Features</a>
+        <a href="#testimonials">Testimonials</a>
         <a href="#workspace">Workspace</a>
         <a href="#history">History</a>
       </nav>
-      <div class="user-menu" id="navUserBar" style="display:none;">
+      <div class="user-menu" id="navUserBar">
         <button type="button" class="user-chip" id="userChipBtn" onclick="toggleUserMenu()">
           <span class="avatar" id="navAvatar"></span>
         </button>
@@ -30,7 +31,6 @@
           <button class="user-dropdown-item" type="button" onclick="handleLogout()">Log out</button>
         </div>
       </div>
-      <a class="nav-cta" href="#authGate" id="navCtaLoggedOut">Log in</a>
     </div>
   </header>
 
@@ -41,6 +41,7 @@
           <span class="brand-mark"></span>
           <span class="auth-card-title">Ledger</span>
         </div>
+
         <div class="auth-tabs">
           <button type="button" class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log in</button>
           <button type="button" class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign up</button>
@@ -70,21 +71,28 @@
         <form id="signupForm" class="auth-form hidden" onsubmit="handleSignup(event)">
           <div class="field">
             <label class="field-label" for="signupEmail">Email</label>
-            <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" required>
+            <input type="email" id="signupEmail" placeholder="you@example.com" autocomplete="email" required oninput="validateSignupEmail()">
+            <div class="field-hint" id="signupEmailHint"></div>
           </div>
           <div class="field">
             <label class="field-label" for="signupPassword">Password</label>
             <div class="password-wrap">
-              <input type="password" id="signupPassword" placeholder="At least 6 characters" autocomplete="new-password" required minlength="6">
+              <input type="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password" required minlength="8" oninput="validateSignupPassword()">
               <button type="button" class="pw-toggle" onclick="togglePassword('signupPassword', this)" aria-label="Show password">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               </button>
             </div>
+            <ul class="pw-requirements" id="pwRequirements">
+              <li id="reqLength">At least 8 characters</li>
+              <li id="reqNumber">Contains a number</li>
+              <li id="reqLetter">Contains a letter</li>
+            </ul>
           </div>
           <button type="submit" id="signupBtn"><span id="signupBtnLabel">Create account</span></button>
           <div id="signupStatus" class="auth-status"></div>
         </form>
       </div>
+      <p class="auth-fineprint">This is a portfolio demo project — please don't paste real confidential meeting content.</p>
     </div>
   </section>
 
@@ -172,6 +180,29 @@
             <div class="feature-icon">Pr</div>
             <h3>Private by account</h3>
             <p>Your log is yours — every decision is scoped to your account with database-level access control.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="testimonials" id="testimonials">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="eyebrow">From early testers</span>
+          <h2>What people are saying.</h2>
+        </div>
+        <div class="testimonial-grid" id="testimonialGrid">
+          <div class="testimonial-card">
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
+          </div>
+          <div class="testimonial-card">
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
+          </div>
+          <div class="testimonial-card">
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
           </div>
         </div>
       </div>
