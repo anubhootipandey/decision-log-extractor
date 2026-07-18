@@ -1,16 +1,3 @@
-"""
-STEP 3: FastAPI backend with Supabase (Postgres + Auth).
-
-This replaces the local SQLite version. Decisions are now:
-- scoped to the logged-in user (via Supabase Auth)
-- stored in a real Postgres database (Supabase's free tier)
-- protected by Row Level Security, enforced by Postgres itself,
-  not just by application code
-
-Run with:  uvicorn main:app --reload
-Then open: http://127.0.0.1:8000/docs
-"""
-
 import os
 import json
 from datetime import datetime

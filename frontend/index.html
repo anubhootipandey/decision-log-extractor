@@ -1,12 +1,25 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ledger — Decision Log Extractor</title>
+<script>
+  (function() {
+    var saved = localStorage.getItem('theme');
+    if (!saved) saved = 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+  })();
+  function toggleTheme() {
+    var current = document.documentElement.getAttribute('data-theme');
+    var next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  }
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -21,14 +34,20 @@
         <a href="#workspace">Workspace</a>
         <a href="#history">History</a>
       </nav>
-      <div class="user-menu" id="navUserBar">
-        <button type="button" class="user-chip" id="userChipBtn" onclick="toggleUserMenu()">
-          <span class="avatar" id="navAvatar"></span>
+      <div class="nav-actions">
+        <button type="button" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         </button>
-        <div class="user-dropdown hidden" id="userDropdown">
-          <div class="user-dropdown-email" id="navUserEmail"></div>
-          <hr>
-          <button class="user-dropdown-item" type="button" onclick="handleLogout()">Log out</button>
+        <div class="user-menu" id="navUserBar">
+          <button type="button" class="user-chip" id="userChipBtn" onclick="toggleUserMenu()">
+            <span class="avatar" id="navAvatar"></span>
+          </button>
+          <div class="user-dropdown hidden" id="userDropdown">
+            <div class="user-dropdown-email" id="navUserEmail"></div>
+            <hr>
+            <button class="user-dropdown-item" type="button" onclick="handleLogout()">Log out</button>
+          </div>
         </div>
       </div>
     </div>
@@ -40,6 +59,10 @@
         <div class="auth-card-brand">
           <span class="brand-mark"></span>
           <span class="auth-card-title">Ledger</span>
+          <button type="button" class="theme-toggle theme-toggle-auth" onclick="toggleTheme()" aria-label="Toggle theme">
+            <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
         </div>
 
         <div class="auth-tabs">
@@ -92,7 +115,6 @@
           <div id="signupStatus" class="auth-status"></div>
         </form>
       </div>
-      <p class="auth-fineprint">This is a portfolio demo project — please don't paste real confidential meeting content.</p>
     </div>
   </section>
 
