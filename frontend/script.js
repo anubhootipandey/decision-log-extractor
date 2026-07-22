@@ -18,7 +18,25 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
  
-// ---------------- Auth ----------------
+function getPreferredTheme() {
+  const stored = localStorage.getItem("theme");
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+ 
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+ 
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  const next = current === "dark" ? "light" : "dark";
+  applyTheme(next);
+  localStorage.setItem("theme", next);
+}
+ 
+applyTheme(getPreferredTheme());
+
  
 function switchAuthTab(tab) {
   document.getElementById("tabLogin").classList.toggle("active", tab === "login");
@@ -159,7 +177,6 @@ function closeUserMenu() {
   document.getElementById("userDropdown").classList.add("hidden");
 }
  
-// Close the user dropdown when clicking anywhere outside it
 document.addEventListener("click", (e) => {
   const menu = document.getElementById("navUserBar");
   if (menu && !menu.contains(e.target)) closeUserMenu();
@@ -189,8 +206,6 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
     showAuthGate();
   }
 });
- 
-// ---------------- App logic ----------------
  
 function setLoading(isLoading) {
   const btn = document.getElementById("extractBtn");
@@ -250,10 +265,13 @@ async function extractDecisions() {
       results.innerHTML = `<div class="card"><p class="empty-msg">Nothing to file — try a transcript with a clearer outcome or agreement.</p></div>`;
     } else {
       status.className = "ok";
-      status.textContent = `✅ Found ${data.count} decision${data.count > 1 ? "s" : ""}.`;
+      status.textContent = `Found ${data.count} decision${data.count > 1 ? "s" : ""}.`;
  
       results.innerHTML = data.decisions.map(d => `
-        <div class="card">
+        <div class="card" data-id="${d.id}">
+          <button class="card-delete" type="button" onclick="deleteDecision('${d.id}', this)" aria-label="Delete this decision" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg>
+          </button>
           <h3>${escapeHtml(d.decision)}</h3>
           <div class="meta">Owner: ${escapeHtml(d.owner || "unknown")} · Rationale: ${escapeHtml(d.rationale || "not stated")}</div>
           <div class="quote">"${escapeHtml(d.source_quote || "")}"</div>
@@ -264,7 +282,7 @@ async function extractDecisions() {
     loadDecisions();
   } catch (err) {
     status.className = "err";
-    status.textContent = `❌ ${err.message || "Could not reach the backend."}`;
+    status.textContent = `${err.message || "Could not reach the backend."}`;
     console.error(err);
   } finally {
     setLoading(false);
@@ -293,12 +311,46 @@ function onSearchInput() {
   searchTimer = setTimeout(loadDecisions, 300);
 }
  
+async function deleteDecision(id, btnEl) {
+  if (!confirm("Delete this decision? This can't be undone.")) return;
+ 
+  const token = await getAccessToken();
+  if (!token) {
+    alert("Your session expired — please log in again.");
+    return;
+  }
+ 
+  const card = btnEl.closest(".card");
+  btnEl.disabled = true;
+ 
+  try {
+    const res = await fetch(`${API_URL}/decisions/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+ 
+    if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+ 
+    card.style.transition = "opacity 0.15s ease, transform 0.15s ease";
+    card.style.opacity = "0";
+    card.style.transform = "translateY(-4px)";
+    setTimeout(() => {
+      card.remove();
+      loadDecisions(); 
+    }, 150);
+  } catch (err) {
+    alert("Could not delete this decision — please try again.");
+    btnEl.disabled = false;
+    console.error(err);
+  }
+}
+ 
 async function loadDecisions() {
   const search = document.getElementById("searchBox").value;
   const container = document.getElementById("pastDecisions");
  
   const token = await getAccessToken();
-  if (!token) return; // not logged in yet — auth gate is showing instead
+  if (!token) return; 
  
   try {
     const res = await fetch(`${API_URL}/decisions${search ? "?search=" + encodeURIComponent(search) : ""}`, {
@@ -313,7 +365,10 @@ async function loadDecisions() {
     }
  
     container.innerHTML = data.map(d => `
-      <div class="card">
+      <div class="card" data-id="${d.id}">
+        <button class="card-delete" type="button" onclick="deleteDecision('${d.id}', this)" aria-label="Delete this decision" title="Delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path></svg>
+        </button>
         <h3>${escapeHtml(d.decision)}</h3>
         <div class="meta">
           ${escapeHtml(d.meeting_title || "")} · Owner: ${escapeHtml(d.owner || "unknown")} · ${new Date(d.created_at).toLocaleDateString()}

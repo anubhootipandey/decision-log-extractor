@@ -592,6 +592,7 @@ button:disabled {
 #results { margin-top: 6px; }
 
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
@@ -613,6 +614,7 @@ button:disabled {
   font-family: var(--font-body);
   font-weight: 600;
   color: var(--ink);
+  padding-right: 30px;
 }
 .card .meta {
   font-family: var(--font-mono);
@@ -634,6 +636,40 @@ button:disabled {
   font-family: var(--font-mono);
   font-size: 13.5px;
   color: var(--ink-faint);
+}
+
+/* card delete button */
+.card-delete {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-faint);
+  padding: 6px;
+  margin: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  opacity: 0;
+  box-shadow: none;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.card:hover .card-delete,
+.card-delete:focus-visible {
+  opacity: 1;
+}
+.card-delete:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  box-shadow: none;
+  transform: none;
+}
+.card-delete:disabled {
+  opacity: 1;
+  color: var(--ink-faint);
+  cursor: wait;
 }
 
 hr { border: none; border-top: 1px solid var(--border); margin: 0; }

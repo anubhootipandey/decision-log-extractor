@@ -1,5 +1,7 @@
 import os
 import json
+import time
+from collections import defaultdict, deque
 from datetime import datetime
 from typing import List, Optional
 
@@ -16,7 +18,7 @@ app = FastAPI(title="Decision Log Extractor")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # for a real product, restrict this to your actual frontend domain
+    allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -27,7 +29,43 @@ SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-MAX_TRANSCRIPT_CHARS = 20000  # safety cap so one request can't drain your Groq quota
+MAX_TRANSCRIPT_CHARS = 20000  
+
+PER_USER_LIMIT = 8          
+PER_USER_WINDOW_SECS = 600   
+
+GLOBAL_LIMIT = 40           
+GLOBAL_WINDOW_SECS = 3600    
+
+_user_request_log: dict[str, deque] = defaultdict(deque)
+_global_request_log: deque = deque()
+
+
+def _prune_old(log: deque, window_secs: int, now: float):
+    while log and now - log[0] > window_secs:
+        log.popleft()
+
+
+def check_rate_limit(user_id: str):
+    now = time.time()
+
+    user_log = _user_request_log[user_id]
+    _prune_old(user_log, PER_USER_WINDOW_SECS, now)
+    if len(user_log) >= PER_USER_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit reached ({PER_USER_LIMIT} extractions per {PER_USER_WINDOW_SECS // 60} min). Please wait a bit and try again.",
+        )
+
+    _prune_old(_global_request_log, GLOBAL_WINDOW_SECS, now)
+    if len(_global_request_log) >= GLOBAL_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail="This demo has hit its shared usage limit for the hour. Please try again later.",
+        )
+
+    user_log.append(now)
+    _global_request_log.append(now)
 
 
 def get_user_client(access_token: str) -> Client:
@@ -128,7 +166,10 @@ def extract(req: ExtractRequest, user=Depends(get_current_user)):
             detail=f"Transcript too long (max {MAX_TRANSCRIPT_CHARS} characters).",
         )
 
+    check_rate_limit(user["id"])
+
     decisions = extract_decisions(req.transcript)
+    inserted_rows = []
 
     if decisions:
         supabase = get_user_client(user["token"])
@@ -143,9 +184,10 @@ def extract(req: ExtractRequest, user=Depends(get_current_user)):
             }
             for d in decisions
         ]
-        supabase.table("decisions").insert(rows_to_insert).execute()
+        result = supabase.table("decisions").insert(rows_to_insert).execute()
+        inserted_rows = result.data  
 
-    return {"count": len(decisions), "decisions": decisions}
+    return {"count": len(decisions), "decisions": inserted_rows}
 
 
 @app.get("/decisions", response_model=List[Decision])
@@ -155,8 +197,6 @@ def get_decisions(search: Optional[str] = None, user=Depends(get_current_user)):
     query = supabase.table("decisions").select("*").order("created_at", desc=True)
 
     if search:
-        # Row Level Security still applies here — this only ever searches
-        # within rows owned by the authenticated user.
         safe_search = search.replace(",", " ").replace("%", " ")
         query = query.or_(
             f"decision.ilike.%{safe_search}%,owner.ilike.%{safe_search}%,rationale.ilike.%{safe_search}%"
