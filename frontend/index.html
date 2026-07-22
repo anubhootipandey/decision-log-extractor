@@ -202,17 +202,24 @@
           <h2>What people are saying.</h2>
         </div>
         <div class="testimonial-grid" id="testimonialGrid">
+          <!--
+            TEMPLATE — replace each blockquote below with a real quote once
+            you've collected feedback (see TESTING_GUIDE.md, Stage 5-6).
+            Only use a quote if the person said Yes to being quoted.
+            Keep to first-name-or-role only, never a full name unless they
+            explicitly offered it.
+          -->
           <div class="testimonial-card">
-            <p class="testimonial-quote">"Seeing the owner and reasoning extracted automatically was the part that stood out to me. I'd definitely use this after project meetings."</p>
-            <div class="testimonial-who">— Computer Science student</div>
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
           </div>
           <div class="testimonial-card">
-            <p class="testimonial-quote">"The interface is simple enough that I knew what to do immediately. The extracted decisions were much cleaner than the notes I usually take."</p>
-            <div class="testimonial-who">— Working Professional</div>
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
           </div>
           <div class="testimonial-card">
-            <p class="testimonial-quote">"I like that it keeps the exact sentence where the decision was made. That's usually the first thing I end up searching for later."</p>
-            <div class="testimonial-who">— Final-year engineering student</div>
+            <p class="testimonial-quote">"Add a real quote here once testing wraps up."</p>
+            <div class="testimonial-who">— Beta tester, role</div>
           </div>
         </div>
       </div>
@@ -260,6 +267,16 @@
           <div class="field search-field">
             <label class="field-label" for="searchBox">Search</label>
             <input type="text" id="searchBox" placeholder="Search past decisions (e.g. 'Postgres', 'Rahul')" oninput="onSearchInput()">
+          </div>
+          <div class="export-actions">
+            <button class="btn-export" type="button" onclick="exportDecisions('csv')" title="Export visible decisions as CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              CSV
+            </button>
+            <button class="btn-export" type="button" onclick="exportDecisions('markdown')" title="Export visible decisions as Markdown">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              Markdown
+            </button>
           </div>
         </div>
         <div id="pastDecisions"></div>

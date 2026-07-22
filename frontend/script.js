@@ -18,6 +18,11 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
  
+// ---------------- Theme ----------------
+// Applied immediately (not on DOMContentLoaded) so there's no flash of the
+// wrong theme on page load. Persisted in localStorage; falls back to the
+// user's OS-level preference the first time they visit.
+ 
 function getPreferredTheme() {
   const stored = localStorage.getItem("theme");
   if (stored === "light" || stored === "dark") return stored;
@@ -36,7 +41,10 @@ function toggleTheme() {
 }
  
 applyTheme(getPreferredTheme());
-
+ 
+let currentDecisionsCache = [];
+ 
+// ---------------- Auth ----------------
  
 function switchAuthTab(tab) {
   document.getElementById("tabLogin").classList.toggle("active", tab === "login");
@@ -177,6 +185,7 @@ function closeUserMenu() {
   document.getElementById("userDropdown").classList.add("hidden");
 }
  
+// Close the user dropdown when clicking anywhere outside it
 document.addEventListener("click", (e) => {
   const menu = document.getElementById("navUserBar");
   if (menu && !menu.contains(e.target)) closeUserMenu();
@@ -206,6 +215,8 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
     showAuthGate();
   }
 });
+ 
+// ---------------- App logic ----------------
  
 function setLoading(isLoading) {
   const btn = document.getElementById("extractBtn");
@@ -265,7 +276,7 @@ async function extractDecisions() {
       results.innerHTML = `<div class="card"><p class="empty-msg">Nothing to file — try a transcript with a clearer outcome or agreement.</p></div>`;
     } else {
       status.className = "ok";
-      status.textContent = `Found ${data.count} decision${data.count > 1 ? "s" : ""}.`;
+      status.textContent = `✅ Found ${data.count} decision${data.count > 1 ? "s" : ""}.`;
  
       results.innerHTML = data.decisions.map(d => `
         <div class="card" data-id="${d.id}">
@@ -282,7 +293,7 @@ async function extractDecisions() {
     loadDecisions();
   } catch (err) {
     status.className = "err";
-    status.textContent = `${err.message || "Could not reach the backend."}`;
+    status.textContent = `❌ ${err.message || "Could not reach the backend."}`;
     console.error(err);
   } finally {
     setLoading(false);
@@ -336,7 +347,7 @@ async function deleteDecision(id, btnEl) {
     card.style.transform = "translateY(-4px)";
     setTimeout(() => {
       card.remove();
-      loadDecisions(); 
+      loadDecisions(); // refreshes the ledger + tally count in case it lived there too
     }, 150);
   } catch (err) {
     alert("Could not delete this decision — please try again.");
@@ -345,12 +356,65 @@ async function deleteDecision(id, btnEl) {
   }
 }
  
+function triggerDownload(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+ 
+function csvEscape(value) {
+  const str = String(value ?? "");
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+ 
+function exportDecisions(format) {
+  if (!currentDecisionsCache || currentDecisionsCache.length === 0) {
+    alert("No decisions to export — try clearing your search, or extract some first.");
+    return;
+  }
+ 
+  const today = new Date().toISOString().split("T")[0];
+ 
+  if (format === "csv") {
+    const header = ["Decision", "Owner", "Rationale", "Source Quote", "Meeting", "Date"];
+    const rows = currentDecisionsCache.map(d => [
+      d.decision, d.owner, d.rationale, d.source_quote, d.meeting_title,
+      new Date(d.created_at).toLocaleDateString()
+    ].map(csvEscape).join(","));
+    const csv = [header.join(","), ...rows].join("\n");
+    triggerDownload(`ledger-decisions-${today}.csv`, csv, "text/csv");
+  } else {
+    const lines = currentDecisionsCache.map(d => {
+      const date = new Date(d.created_at).toLocaleDateString();
+      return [
+        `### ${d.decision || "Untitled decision"}`,
+        `- **Owner:** ${d.owner || "unknown"}`,
+        `- **Rationale:** ${d.rationale || "not stated"}`,
+        `- **Meeting:** ${d.meeting_title || "—"} (${date})`,
+        `- **Source:** "${(d.source_quote || "").replace(/\n/g, " ")}"`,
+        ""
+      ].join("\n");
+    });
+    const md = `# Decision Log Export — ${today}\n\n` + lines.join("\n");
+    triggerDownload(`ledger-decisions-${today}.md`, md, "text/markdown");
+  }
+}
+ 
 async function loadDecisions() {
   const search = document.getElementById("searchBox").value;
   const container = document.getElementById("pastDecisions");
  
   const token = await getAccessToken();
-  if (!token) return; 
+  if (!token) return; // not logged in yet — auth gate is showing instead
  
   try {
     const res = await fetch(`${API_URL}/decisions${search ? "?search=" + encodeURIComponent(search) : ""}`, {
@@ -358,6 +422,7 @@ async function loadDecisions() {
     });
     if (!res.ok) throw new Error(`Server responded with ${res.status}`);
     const data = await res.json();
+    currentDecisionsCache = data;
  
     if (data.length === 0) {
       container.innerHTML = `<div class="card"><p class="empty-msg">${search ? "No matching decisions." : "No decisions logged yet — extract your first transcript above."}</p></div>`;
@@ -393,3 +458,4 @@ document.addEventListener("DOMContentLoaded", () => {
   transcriptEl.addEventListener("input", updateCharCount);
   updateCharCount();
 });
+ 

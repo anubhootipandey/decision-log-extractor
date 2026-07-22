@@ -1067,3 +1067,37 @@ footer {
   text-align: center;
   line-height: 1.5;
 }
+
+/* ---------- Export buttons ---------- */
+
+.export-actions {
+  display: flex;
+  gap: 8px;
+  align-self: flex-end;
+}
+
+.btn-export {
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: 1px solid var(--border-strong);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 0;
+  box-shadow: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-export:hover {
+  background: var(--surface-alt);
+  color: var(--ink);
+  border-color: var(--ink);
+  box-shadow: none;
+  transform: none;
+}
+
+@media (max-width: 480px) {
+  .export-actions { align-self: flex-start; width: 100%; }
+  .btn-export { flex: 1; justify-content: center; }
+}
